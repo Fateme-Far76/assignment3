@@ -6,6 +6,7 @@ import re
 class Crawler:
     def __init__(self, url):
         self.url = url
+        self.current_sub_url = None
 
     def hack_ssl(self):
         """ ignores the certificate errors"""
@@ -78,31 +79,54 @@ class Crawler:
         text = str(url)
         text = text[26:].split('"')[0] + "/"
         return text
-
-    def crawl_site(self):
-        print ('fetch urls')
+    
+    def sub_urls_gen(self):
+        print('fetch urls')
         s = self.open_url(self.url)
         reflist = self.read_hrefs(s)
 
-        print ('getting sub-urls')
-        sub_urls = [s for s in filter(lambda x: '<a href="/sportaanbieders' in str(x), reflist)]
-        sub_urls = sub_urls[3:]
+        print('getting sub-urls')
+        self.sub_urls = [s for s in filter(lambda x: '<a href="/sportaanbieders' in str(x), reflist)]
+        self.sub_urls = self.sub_urls[3:]
+        for sub in self.sub_urls:
+            yield self.extract(sub)
 
-        print ('extracting the data')
-        print (f'{len(sub_urls)} sub-urls')
+    def __iter__(self): 
+        self.sub_index = 0
+        return self 
+    
+    def __next__(self):
+        # If the current_sub_url is None, fetch the sub-urls
+        if self.current_sub_url is None:
+            s = self.open_url(self.url)
+            reflist = self.read_hrefs(s)
+            self.sub_urls = [s for s in filter(lambda x: '<a href="/sportaanbieders' in str(x), reflist)]
+            self.sub_urls = self.sub_urls[3:]
+            self.sub_index = 0
 
-        for sub in sub_urls:
-            try:
-                sub = self.extract(sub)
-                site = self.url[:-16] + sub
-                soup = self.open_url(site) 
-                info = self.fetch_sidebar(soup) 
-                info = self.read_li(info)
-                phone = self.get_phone(info)
-                phone = self.remove_html_tags(phone).strip()
-                email = self.get_email(info)
-                email = self.remove_html_tags(email).replace("/","")
-                print (f'{site} ; {phone} ; {email}')
-            except Exception as e:
-                print (e)
-                exit()
+        # If there are still sub-urls left, process the next one
+        if self.sub_index < len(self.sub_urls):
+            sub = self.extract(self.sub_urls[self.sub_index])
+            self.current_sub_url = self.url[:-16] + sub
+            soup = self.open_url(self.current_sub_url)
+            info = self.fetch_sidebar(soup)
+            info = self.read_li(info)
+            phone = self.get_phone(info)
+            phone = self.remove_html_tags(phone).strip()
+            email = self.get_email(info)
+            email = self.remove_html_tags(email).replace("/", "")
+            self.sub_index += 1
+            return f'{self.current_sub_url} ; {phone} ; {email}'
+
+        # If there are no sub-urls left, raise StopIteration
+        raise StopIteration
+
+ 
+'''crawler = Crawler("https://sport050.nl/sportaanbieders/alle-aanbieders/")
+for x in range(5):
+    print (str(next(crawler)))'''
+
+crawler = Crawler("https://sport050.nl/sportaanbieders/alle-aanbieders/")
+limited_calls = 3
+for _, result in zip(range(limited_calls), crawler):
+    print(result)

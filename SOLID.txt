@@ -1,0 +1,13 @@
+- The Crawler class is responsible for various tasks such as handling SSL, parsing HTML, extracting information,
+and iterating over sub-urls. It would be beneficial to extract these responsibilities into separate classes 
+or functions to adhere to the Single Responsibility Principle. 
+
+- The Crawler class has a direct dependency on the BeautifulSoup library, which violates the Dependency 
+Inversion Principle. Instead, introduce an abstraction or interface to decouple the Crawler class from the 
+specific HTML parsing library. This way, you can easily switch to a different library if needed without 
+modifying the Crawler class.
+
+- The current implementation of the Crawler class is not easily extensible. If you wanted to add new 
+functionality or modify existing behavior, you would need to modify the class directly. To adhere to the 
+Open-Closed Principle, it would be better to design the class in a way that allows for easy extension through
+inheritance or composition.
